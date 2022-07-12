@@ -10,9 +10,19 @@ import {
   RevocationBitmap,
 } from "@iota/identity-wasm/node";
 import { resolveTxt } from "dns/promises";
+import { Options } from "prettier";
 import { clientConfig } from "../client-config";
 import { Fragment } from "../identity-manager.types";
-import { ICreateCredentialProps } from "./create-credential-props.interface";
+import { IdentityAccount } from "../IdentityAccount/identity-account";
+import { buildStorageDriver } from "../StorageDriver/drivers/storage-driver";
+import {
+  StorageDriver,
+  StorageDriverProps,
+} from "../StorageDriver/drivers/storage-driver.types";
+import {
+  ICreateCredentialProps,
+  ICredentialManagerProps,
+} from "./credentials-manager.types";
 
 /**
  * Credentials Manager is a helper class which contains all the abstractions for creating
@@ -21,14 +31,26 @@ import { ICreateCredentialProps } from "./create-credential-props.interface";
 
 export class CredentialsManager {
   resolver: Resolver;
+  identityAccount: IdentityAccount;
+  fragment: Fragment;
   account: Account;
   revocationEndpoint: Fragment;
+  store: StorageDriver;
 
-  constructor(account: Account, revocationEndpoint: Fragment) {
+  constructor(props: ICredentialManagerProps) {
+    const { account, store, revocationEndpoint } = props;
     this.resolver = new Resolver();
     this.account = account;
     this.revocationEndpoint = revocationEndpoint;
     this.buildResolver();
+    this.buildStore(store);
+  }
+
+  private async buildStore<T>(props: StorageDriverProps<T>) {
+    this.store = await buildStorageDriver({
+      ...props,
+      fragment: this.fragment,
+    });
   }
 
   private async buildResolver() {
@@ -42,7 +64,7 @@ export class CredentialsManager {
    * @returns {Promise<Credential>}
    */
 
-  async create(props: ICreateCredentialProps): Promise<Credential> {
+  async newCredential(props: ICreateCredentialProps): Promise<Credential> {
     const { id, recipientDid, body, type, fragment, keyIndex } = props;
 
     const credentialSubject = {

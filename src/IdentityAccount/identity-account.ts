@@ -13,21 +13,28 @@ import {
   Document,
 } from "@iota/identity-wasm/node";
 import { Fragment } from "../identity-manager.types";
+import { Driver } from "../StorageDriver/drivers/storage-driver.types";
 
 /**
  * Utitlity class to bind wrapper methods to an Identity Instance
  */
 
-export class IdentityAccount {
+export class IdentityAccount extends CredentialsManager {
   account: Account;
   credentials: CredentialsManager;
 
   constructor(props: IIdentityAccountProps) {
+    super({
+      account: props.account,
+      revocationEndpoint: "#revocation-bitmap",
+      store: {
+        type: Driver.Mongo,
+        options: {
+          mongouri: "mongodb://localhost:27017",
+        },
+      },
+    });
     this.account = props.account;
-    this.credentials = new CredentialsManager(
-      props.account,
-      "#revocation-bitmap"
-    );
   }
 
   /**
@@ -133,13 +140,13 @@ export class IdentityAccount {
   /**
    * Decrypt the data
    *
-   * @param {EncryptedData | JSON} encryptedData - data to decrypt
+   * @param {EncryptedData | JSON | Record<string, unknown>} encryptedData - data to decrypt
    * @param {Fragment} fragment - fragment to decrypt the data with
    * @returns {Promise<string>}
    */
 
   async decryptData(
-    encryptedData: EncryptedData | JSON,
+    encryptedData: EncryptedData | JSON | Record<string, unknown>,
     fragment: Fragment
   ): Promise<string> {
     encryptedData =
